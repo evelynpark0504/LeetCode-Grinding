@@ -21,3 +21,36 @@ public:
         return true;
     }
 };
+
+class Solution {
+public:
+    bool isPalindrome(string s) {
+        int left = 0;
+        int right = s.length() - 1;
+
+        while (left < right) {
+            // Skip non-alphanumeric characters from the left
+            while (left < right && !isalnum(s[left])) {
+                left++;
+            }
+            // Skip non-alphanumeric characters from the right
+            while (left < right && !isalnum(s[right])) {
+                right--;
+            }
+
+            // Directly compare characters without multiple conversions
+            char leftChar = tolower(s[left]);
+            char rightChar = tolower(s[right]);
+
+            if (leftChar != rightChar) {
+                return false;
+            }
+
+            // Move both pointers
+            left++;
+            right--;
+        }
+
+        return true;
+    }
+};

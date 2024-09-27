@@ -60,3 +60,25 @@ private:
         inorderTraversal(node->right);
     }
 };
+
+class Solution {
+public:
+    void solve(TreeNode* root, int& result, TreeNode*& prev){
+        if(!root){
+            return;
+        }
+        solve(root->left, result, prev);
+        if(prev){
+            result = min(result, abs(root->val - prev->val));
+        }
+        prev = root;
+        solve(root->right, result, prev);
+    }
+
+    int getMinimumDifference(TreeNode* root) {
+        int result = INT_MAX;
+        TreeNode* prev = nullptr;
+        solve(root, result, prev);
+        return result;
+    }
+};

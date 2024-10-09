@@ -1,0 +1,104 @@
+# Positional Encoding
+function PositionalEncoding(d_model, max_len):
+    Create 'pe' of size (max_len, d_model) filled with zeros
+    For each position in max_len:
+        For each dimension in d_model:
+            If dimension is even:
+                pe[position, dimension] = sin(position / (10000 ^ (dimension / d_model)))
+            Else:
+                pe[position, dimension] = cos(position / (10000 ^ (dimension / d_model)))
+    return pe
+
+function ApplyPositionalEncoding(input_sequence):
+    return input_sequence + PositionalEncoding
+
+# Scaled Dot-Product Attention
+function ScaledDotProductAttention(query, key, value, mask=None):
+    d_k = size of query's last dimension
+    scores = (query * key^T) / sqrt(d_k)  # Scale dot-product by sqrt(d_k)
+    
+    if mask exists:
+        Apply mask to scores (set masked positions to -∞)
+
+    attention_weights = Softmax(scores)
+    attention_output = attention_weights * value  # Weighted sum of values
+    return attention_output
+
+# Multi-Head Attention
+function MultiHeadAttention(query, key, value, num_heads, d_model):
+    d_k = d_model / num_heads  # Dimension per head
+    Split query, key, value into 'num_heads' heads of size d_k
+
+    For each head:
+        attention_output = ScaledDotProductAttention(query_head, key_head, value_head)
+
+    Concatenate attention outputs of all heads
+    Apply final linear transformation
+    return multi-head attention output
+
+# Feed-Forward Network
+function FeedForwardNetwork(input, d_model, d_ff):
+    output = ReLU(Linear(input, d_ff))  # First linear layer with ReLU
+    output = Linear(output, d_model)    # Second linear layer
+    return output
+
+# Encoder Layer
+function EncoderLayer(input_sequence, num_heads, d_model, d_ff):
+    attention_output = MultiHeadAttention(input_sequence, input_sequence, input_sequence, num_heads, d_model)
+    norm1 = LayerNorm(input_sequence + attention_output)  # Add & LayerNorm
+
+    ff_output = FeedForwardNetwork(norm1, d_model, d_ff)
+    norm2 = LayerNorm(norm1 + ff_output)  # Add & LayerNorm
+
+    return norm2  # Return output of encoder layer
+
+# Encoder
+function Encoder(input_sequence, num_layers, num_heads, d_model, d_ff):
+    encoded_sequence = ApplyPositionalEncoding(Embedding(input_sequence, d_model))
+
+    For each layer in num_layers:
+        encoded_sequence = EncoderLayer(encoded_sequence, num_heads, d_model, d_ff)
+
+    return encoded_sequence  # Return final encoded sequence
+
+# Decoder Layer
+function DecoderLayer(target_sequence, encoder_output, num_heads, d_model, d_ff, src_mask, tgt_mask):
+    attention_output_1 = MultiHeadAttention(target_sequence, target_sequence, target_sequence, num_heads, d_model, tgt_mask)
+    norm1 = LayerNorm(target_sequence + attention_output_1)  # Add & LayerNorm
+
+    attention_output_2 = MultiHeadAttention(norm1, encoder_output, encoder_output, num_heads, d_model, src_mask)
+    norm2 = LayerNorm(norm1 + attention_output_2)  # Add & LayerNorm
+
+    ff_output = FeedForwardNetwork(norm2, d_model, d_ff)
+    norm3 = LayerNorm(norm2 + ff_output)  # Add & LayerNorm
+
+    return norm3  # Return output of decoder layer
+
+# Decoder
+function Decoder(target_sequence, encoder_output, num_layers, num_heads, d_model, d_ff, src_mask, tgt_mask):
+    decoded_sequence = ApplyPositionalEncoding(Embedding(target_sequence, d_model))
+
+    For each layer in num_layers:
+        decoded_sequence = DecoderLayer(decoded_sequence, encoder_output, num_heads, d_model, d_ff, src_mask, tgt_mask)
+
+    return decoded_sequence  # Return final decoded sequence
+
+# Transformer Model
+function Transformer(src_input, tgt_input, num_layers, num_heads, d_model, d_ff, src_vocab_size, tgt_vocab_size):
+    src_mask = create_padding_mask(src_input)
+    tgt_mask = create_look_ahead_mask(tgt_input) + create_padding_mask(tgt_input)
+
+    encoder_output = Encoder(src_input, num_layers, num_heads, d_model, d_ff)
+    decoder_output = Decoder(tgt_input, encoder_output, num_layers, num_heads, d_model, d_ff, src_mask, tgt_mask)
+
+    final_output = Linear(decoder_output, tgt_vocab_size)  # Generate final predictions
+    return final_output
+
+# Masks
+function create_padding_mask(sequence):
+    mask = (sequence == 0)  # Identify padding positions (where sequence is 0)
+    return mask
+
+function create_look_ahead_mask(size):
+    mask = UpperTriangularMatrix(size)  # Upper triangular mask to prevent looking ahead
+    return mask
